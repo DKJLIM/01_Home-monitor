@@ -53,17 +53,28 @@ try:
     draw = ImageDraw.Draw(Himage)
 
     # Weather Dashboard Title
-    draw.text(xy = (10, 5), text = 'DO NOT SUCK THE PENIS', font=set_of_fonts[70], fill=0)
+    draw.text(xy = (10, 5), text = 'Colin the cat looks at you ominously', font=set_of_fonts[70], fill=0)
     draw.line((10, 80, 700, 80), fill=0)  # Underline
 
     # include an image below the title
     weather_image_path = os.path.join(picdir, 'test.bmp')  # Path to your weather icon
     if os.path.exists(weather_image_path):
-        weather_icon = Image.open(weather_image_path)
-        weather_icon = weather_icon.resize((100, 100), Image.ANTIALIAS)  # Resize if necessary
-        Himage.paste(weather_icon, (10, 90))  # Paste the icon at position (10, 90)
+        image_temp = Image.open(weather_image_path)
+        #put him to the center, and make him 1/3
+        resize_factor = 1/3
+        new_size = (int(image_temp.width * resize_factor), int(image_temp.height * resize_factor))
+        image_temp = image_temp.resize(new_size, Image.ANTIALIAS)  # Resize if necessary
 
-    
+        position_image = ((400 - image_temp.width//2),
+                          (240 - image_temp.height//2))  # Center the image horizontally
+        Himage.paste(image_temp, position_image)  # Paste the icon at position (10, 90)
+
+    else:
+        logging.error(f"Weather icon not found at {weather_image_path}")
+        #draw a box instead
+        draw.rectangle((400, 200,
+                        400 + 100,
+                        200 + 100), fill=0)
 
     # Display the image
     epd.display(epd.getbuffer(Himage))
