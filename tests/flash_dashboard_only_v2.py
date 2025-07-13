@@ -59,7 +59,7 @@ def draw_box(size, position):
     coords_1 = (position[0], position[1])
     coords_2 = (position[0] + size[0], position[1] + size[1])
     draw.rectangle((coords_1, coords_2),
-                    fill=None,
+                    fill=1,
                     outline=0)  # Draw a white box with black outline
 
 
@@ -75,6 +75,7 @@ try:
 
     logging.info("init and Clear")
     epd.init()
+    epd.Clear()
 
     #pseudo fix at the moment
     # image = Image.new('1', (epd.width, epd.height), 1) # White background
@@ -84,55 +85,62 @@ try:
     # Generate a list of fonts with different sizes
     logging.info("Drawing Weather Dashboard...")
 
-    # Create new image (assuming similar dimensions to your setup)
-    Himage = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the frame
+    # # Create new image (assuming similar dimensions to your setup)
+    Himage = Image.new(mode = 'L', size = (epd.width, epd.height), color = 1)  # 255: clear the frame
     print('EPD size:', epd.width,":",epd.height)
     draw = ImageDraw.Draw(Himage)
 
-    # drawing all boarders for refernce 
 
+    # logging.info("read bmp file")
+    # Himage = Image.open(os.path.join(picdir, '7in5_V2.bmp'))
+    # epd.display(epd.getbuffer(Himage))
+    # time.sleep(2)
+
+    # ####################################
+    # # drawing all boarders for refernce 
+    # ####################################
     resolution = (epd.width, epd.height) #resolution of display
     buffer = 10  # buffer of 10 pixels.....
 
     # Clock widget
-    coord_box_prev = (0 + buffer ,0 + buffer)
-    size_box = (380,130)
-    draw_box(size = (size_box), position = (coord_box_prev[0], coord_box_prev[1]))
+    # coord_box_prev = (0 + buffer ,0 + buffer)
+    # size_box = (380,130)
+    # draw_box(size = (size_box), position = (coord_box_prev[0], coord_box_prev[1]))
     
 
-    #internal clock system
-    time_hm = time.strftime("%H:%M", time.localtime())
-    time_pm = time.strftime("%p", time.localtime())
-    draw.text(xy = coord_box_prev, text = f"{time_hm}", font=set_of_fonts[120], fill=0)
-    draw.text(xy = (310,80), text = f"{time_pm}", font=set_of_fonts[40], fill=0)
+    # #internal clock system
+    # time_hm = time.strftime("%H:%M", time.localtime())
+    # time_pm = time.strftime("%p", time.localtime())
+    # draw.text(xy = coord_box_prev, text = f"{time_hm}", font=set_of_fonts[120], fill=0)
+    # draw.text(xy = (310,80), text = f"{time_pm}", font=set_of_fonts[40], fill=0)
 
-    # Date widget
-    coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
-    size_box = (380, 80) 
-    draw_box(size = (size_box), position = coord_box_prev)
+    # # Date widget
+    # coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
+    # size_box = (380, 80) 
+    # draw_box(size = (size_box), position = coord_box_prev)
 
-    # weather
-    coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
-    size_box = (380, 130) 
-    time_hms = time.strftime("%H:%M:%S", time.localtime())
-    draw.text(xy = coord_box_prev, text = f"{time_hms}", font=set_of_fonts[40], fill=0)
+    # # weather
+    # coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
+    # size_box = (380, 130) 
+    # time_hms = time.strftime("%H:%M:%S", time.localtime())
+    # draw.text(xy = coord_box_prev, text = f"{time_hms}", font=set_of_fonts[40], fill=0)
     
-    draw_box(size = (size_box), position = coord_box_prev)
+    # draw_box(size = (size_box), position = coord_box_prev)
 
-    # News Headline 
-    coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
-    size_box = (380, 90) 
-    draw_box(size = (size_box), position = coord_box_prev)
+    # # News Headline 
+    # coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
+    # size_box = (380, 90) 
+    # draw_box(size = (size_box), position = coord_box_prev)
 
-    # to do list 
-    coord_box_prev = ( 380 + (buffer*2 + buffer) , 0 + buffer)
-    size_box = (380, 225) 
-    draw_box(size = (size_box), position = coord_box_prev)
+    # # to do list 
+    # coord_box_prev = ( 380 + (buffer*2 + buffer) , 0 + buffer)
+    # size_box = (380, 225) 
+    # draw_box(size = (size_box), position = coord_box_prev)
 
-    # Music/News
-    coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
-    size_box = (380, 225) 
-    draw_box(size = (size_box), position = coord_box_prev)
+    # # Music/News
+    # coord_box_prev = (coord_box_prev[0], coord_box_prev[1] + size_box[1] + buffer)
+    # size_box = (380, 225) 
+    # draw_box(size = (size_box), position = coord_box_prev)
 
     # putting album art 
 
@@ -149,14 +157,13 @@ try:
         position_image = (((380 + 3*buffer + 190) - image_temp.width//2),
                           ((245 + 112) - image_temp.height//2))  # Center the image horizontally
         Himage.paste(image_temp, position_image)  # Paste the icon at position (10, 90)
+        epd.display(epd.getbuffer(Himage))
 
+    # save output 
+    Himage.save("my_generated_image.png")
     # Display the image
     epd.display(epd.getbuffer(Himage))
     time.sleep(2)
-
-    logging.info("Clear...")
-    epd.init()
-    epd.Clear()
 
     logging.info("Goto Sleep...")
     epd.sleep()
@@ -174,34 +181,3 @@ except KeyboardInterrupt:
 
 
 
-
-
-    # Date widget
-    # coord_box_prev = (0, coord_box_prev[1] + size_box[1] + buffer)
-    # size_box = (380, 80)
-    # draw_box(size = (size_box), position = (0, coord_box_prev[1]))
-
-    # print(coord_box_prev)
-
-    # Weather widget
-
-
-    # # include an image below the title
-    # weather_image_path = os.path.join(picdir, 'test.bmp')  # Path to your weather icon
-    # if os.path.exists(weather_image_path):
-    #     image_temp = Image.open(weather_image_path)
-    #     #put him to the center, and make him 1/3
-    #     resize_factor = 1/3
-    #     new_size = (int(image_temp.width * resize_factor), int(image_temp.height * resize_factor))
-    #     image_temp = image_temp.resize(new_size, Image.ANTIALIAS)  # Resize if necessary
-
-    #     position_image = ((400 - image_temp.width//2),
-    #                       (240 - image_temp.height//2))  # Center the image horizontally
-    #     Himage.paste(image_temp, position_image)  # Paste the icon at position (10, 90)
-
-    # else:
-    #     logging.error(f"Weather icon not found at {weather_image_path}")
-    #     #draw a box instead
-        # draw.rectangle((400, 200,
-        #                 400 + 100,
-        #                 200 + 100), fill=0)

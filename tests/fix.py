@@ -5,7 +5,6 @@ import time
 import traceback
 
 from pathlib import Path
-from PIL import Image # to change photos
 from PIL import Image,ImageDraw,ImageFont
 
 #setting local paths
@@ -22,12 +21,9 @@ from waveshare_epd import epd7in5_V2_old # specific set of modules from waveshar
 sys.path.append(str(Path(__file__).parent.parent))
 from src.modules import printing_image as pim
 
-# ACTUAL SCRIPTS
-logging.basicConfig(level=logging.DEBUG)
 
-logging.info("epd7in5_V2 Demo")
-epd = epd7in5_V2_old.EPD()
-logging.info("init and Clear")
+####################################################
+# ACTUAL SCRIPTS
 
 def get_font(size):
     """
@@ -37,34 +33,38 @@ def get_font(size):
     """
     return ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), size)
 
-
-
-epd.init()
-epd.Clear()
-
-# Generate a list of fonts with different sizes
-logging.info("Drawing Weather Dashboard...")
-
-# Create new image (assuming similar dimensions to your setup)
-Himage = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the frame
-print('EPD size:', epd.width,":",epd.height)
-draw = ImageDraw.Draw(Himage)
-
 set_of_fonts = {}
 for size in range(12, 200, 2):
     set_of_fonts[size] = get_font(size)
 
 
 
-def draw_box(size, position): 
-    draw = ImageDraw.Draw(Himage)
-    coords_1 = (position[0], position[1])
-    coords_2 = (position[0] + size[0], position[1] + size[1])
-    draw.rectangle((coords_1, coords_2),
-                    fill=1,
-                    outline=0)  # Draw a white box with black outline
+try:
+    epd = epd7in5_V2_old.EPD()
+    print("Initializing display...")
+    epd.init()
 
-draw_box((100, 100), (10, 10))  # Example usage of draw_box function
-# Display the image
-epd.display(epd.getbuffer(Himage))
-time.sleep(2)
+
+    # Create a simple test image
+    image = Image.new('1', (epd.width, epd.height), 255) # White background
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0,0, 800, 480), fill=0, outline = 0) # Black rectangle
+    
+
+    draw.rectangle((10, 10, 700, 350), fill= 20, outline = 1) # Black rectangle
+    draw.text((10, 10), "Hello, Waveshare EPD!", font=get_font(24), fill=0) # Black text
+    
+   
+    
+    print("Displaying test image...")
+    epd.display(epd.getbuffer(image))
+    time.sleep(5) # Wait for refresh
+    
+    print("Clearing display...")
+    epd.reset()
+    epd.Clear()
+    time.sleep(5)
+    epd.sleep()
+    print("Done")
+except Exception as e:
+    print(f"Error: {e}")
