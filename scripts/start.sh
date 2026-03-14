@@ -23,6 +23,7 @@ fi
 # ── 2. System packages ────────────────────────────────────────────────────────
 echo "==> Installing system packages"
 sudo apt-get update -qq
+sudo apt-get install -y -qq python3 python3-venv python3-pip libopenjp2-7 libtiff6 || \
 sudo apt-get install -y -qq python3 python3-venv python3-pip libopenjp2-7 libtiff5
 
 # ── 3. Python virtual environment ────────────────────────────────────────────
