@@ -37,7 +37,27 @@ echo "==> Installing Python dependencies"
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 "$VENV_DIR/bin/pip" install --quiet -e "$REPO_DIR"
 
-# ── 5. Run ────────────────────────────────────────────────────────────────────
-echo "==> Starting home monitor (Ctrl+C to stop)"
+# ── 5. Install tmux if missing ────────────────────────────────────────────────
+if ! command -v tmux &>/dev/null; then
+    echo "==> Installing tmux"
+    sudo apt-get install -y -qq tmux
+fi
+
+# ── 6. Launch in tmux ─────────────────────────────────────────────────────────
+SESSION="monitor"
+
+# Kill existing session if running
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+    echo "==> Stopping existing monitor session"
+    tmux kill-session -t "$SESSION"
+fi
+
+echo "==> Starting home monitor in tmux session '$SESSION'"
 export TFL_API_KEY="${TFL_API_KEY:-}"
-exec "$VENV_DIR/bin/python" "$MAIN_SCRIPT"
+tmux new-session -d -s "$SESSION" "$VENV_DIR/bin/python $MAIN_SCRIPT"
+
+echo ""
+echo "    Monitor is running in the background."
+echo "    To watch it:   tmux attach -t $SESSION"
+echo "    To stop it:    tmux kill-session -t $SESSION"
+echo "    Detach:        Ctrl+B then D"
