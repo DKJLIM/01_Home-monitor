@@ -1,28 +1,30 @@
-#test of current script 
+# Relevant imports and libaries
 import sys
 import os
+import logging
 import time
 import traceback
 
-from pathlib import Path
-from PIL import Image # to change photos
-from PIL import Image,ImageDraw,ImageFont
+# Importing local modules
+import printing_image as pim
 
-#setting local paths
+# importing other modules
+from PIL import Image,ImageDraw,ImageFont # to change photos
+from waveshare_epd import epd7in5_V2_old
+from pathlib import Path
+
+# Paths to the assets
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'assets/pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'assets/lib')
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-# import local libraries/modules
-import logging
-from waveshare_epd import epd7in5_V2_old # specific set of modules from waveshare
-from waveshare_epd import epd7in5_V2 # specific set of modules from waveshare
+sys.path.append(str(Path(__file__).parent.parent / 'src' / 'modules'))
 
-sys.path.append(str(Path(__file__).parent.parent))
-from src.modules import printing_image as pim
 
-# ACTUAL SCRIPTS
+########################################################
+# Initialize screen
+########################################################
 
 
 def get_font(size):
@@ -49,9 +51,7 @@ class dashboard_planner:
         self.coordinates_list = list()
     
     # def calculate_coordinates(self):
-
     #     coordinates_results = .... 
-        
     #     self.coordinates = coordinates_results
 
 def draw_box(size, position): 
@@ -66,9 +66,6 @@ def draw_box(size, position):
 logging.basicConfig(level=logging.DEBUG)
 
 
-
-# epd.Clear()
-
 try:   
     logging.info("epd7in5_V2 Demo")
     epd = epd7in5_V2_old.EPD()
@@ -76,11 +73,6 @@ try:
     logging.info("init and Clear")
     epd.init()
     epd.Clear()
-
-    #pseudo fix at the moment
-    # image = Image.new('1', (epd.width, epd.height), 1) # White background
-    # draw = ImageDraw.Draw(image)
-    # draw.rectangle((0,0, 800, 480), fill=1, outline = 1) # White background
 
     # Generate a list of fonts with different sizes
     logging.info("Drawing Weather Dashboard...")
@@ -175,9 +167,3 @@ except KeyboardInterrupt:
     logging.info("ctrl + c:")
     epd7in5_V2_old.epdconfig.module_exit(cleanup=True)
     exit()
-
-
-
-
-
-

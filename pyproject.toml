@@ -1,0 +1,7 @@
+[project]
+name = "01-home-monitor"
+version = "0.1.0"
+description = "includes all dependencies required for the project"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
