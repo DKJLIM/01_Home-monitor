@@ -4,11 +4,10 @@ This is a personal repository for a smart home display system setup, using the W
 
 ## Features
 
-- Automated dashboard updates every 15 minutes
-- Weather information display
+- Live dashboard refreshed every 60 seconds
+- TfL (Transport for London) live arrivals
 - E-ink display integration with WaveShare 7.5" display
-- Robust error handling and logging
-- Easy deployment script for Raspberry Pi
+- Runs as a systemd service: starts on boot, restarts automatically on crash
 
 ## Hardware Requirements
 
@@ -19,104 +18,89 @@ This is a personal repository for a smart home display system setup, using the W
 
 ## Installation
 
-### Quick Setup (Recommended)
-
 1. Clone the repository to your Raspberry Pi:
    ```bash
-   git clone https://github.com/DKJLIM/01_Home-monitor.git
-   cd 01_Home-monitor
+   git clone https://github.com/DKJLIM/01_Home-monitor.git home-monitor
+   cd home-monitor
    ```
 
-2. Make the deployment script executable and run it:
+2. Run the setup script:
    ```bash
-   chmod +x scripts/deploy.sh
-   ./scripts/deploy.sh
+   ./scripts/start.sh
    ```
 
-This will automatically:
-- Install required Python packages
-- Set up logging
-- Create a cron job to run the dashboard every 15 minutes
-- Create wrapper scripts for proper execution
+This will:
+- Enable the SPI interface (required for the e-ink display)
+- Install required system and Python packages
+- Create a virtual environment and install the project into it
+- Install and start `home-monitor.service` via systemd, enabled to start on boot
 
-### Manual Setup
-
-If you prefer to set things up manually:
-
-1. Install system dependencies:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install python3 python3-pip libfreetype6-dev libjpeg-dev build-essential
-   ```
-
-2. Install Python dependencies:
-   ```bash
-   pip3 install -r requirements.txt
-   ```
-
-3. Set up the cron job manually:
-   ```bash
-   crontab -e
-   ```
-   Add this line:
-   ```
-   */15 * * * * /path/to/01_Home-monitor/scripts/run_dashboard.sh # home-monitor
-   ```
+Re-running `./scripts/start.sh` at any time is safe — setup steps are skipped
+if already done, and the systemd service is reinstalled/restarted with
+whatever's currently checked out.
 
 ## Usage
 
-### Available Commands
-
-The deployment script supports several commands:
+The dashboard runs as a systemd service (`home-monitor.service`), not a
+foreground process — manage it with `systemctl`/`journalctl`:
 
 ```bash
-# Full deployment (install dependencies, setup cron, test)
-./scripts/deploy.sh
+# Check whether it's running
+systemctl status home-monitor
 
-# Install dependencies only
-./scripts/deploy.sh install
+# Follow live logs
+journalctl -u home-monitor -f
 
-# Setup cron job only
-./scripts/deploy.sh setup-cron
+# Restart it (e.g. after a manual code change without a full ./scripts/start.sh)
+sudo systemctl restart home-monitor
 
-# Test the script
-./scripts/deploy.sh test
+# Stop it
+sudo systemctl stop home-monitor
 
-# View live logs
-./scripts/deploy.sh logs
-
-# Check status
-./scripts/deploy.sh status
-
-# Remove cron job
-./scripts/deploy.sh remove
+# Disable it from starting on boot
+sudo systemctl disable home-monitor
 ```
 
-### Monitoring
+### Optional: TfL API key
 
-- **View logs**: `./scripts/deploy.sh logs` or `tail -f logs/dashboard.log`
-- **Check cron status**: `crontab -l`
-- **Manual run**: `python3 tests/flash_dashboard_only_v2.py`
+The dashboard works without one (unauthenticated requests, lower rate limit).
+To use a key, put it in a `.env` file in the repo root on the Pi:
+```
+TFL_API_KEY=your_key_here
+```
+`home-monitor.service` reads this file automatically (`.env` is gitignored,
+so it's never committed).
 
-### Logs
+## Development
 
-Logs are stored in `logs/dashboard.log` and automatically rotated daily (keeping 7 days of history).
+The dashboard can be iterated on entirely on your own machine — no Pi or
+e-ink hardware needed:
+
+```bash
+# One-shot: render the current dashboard to dashboard_preview.png and exit
+python src/run.py --preview
+
+# Live iterate loop: re-renders on every save and auto-refreshes a browser tab
+python scripts/dev_preview.py
+```
+
+`--preview` skips all display-hardware initialisation (`ScreenRenderer`
+falls back automatically if the WaveShare driver isn't importable anyway),
+so this works the same on macOS/Linux dev machines as it does on the Pi.
 
 ## Project Structure
 
 ```
-├── assets/
-│   ├── lib/                # WaveShare EPD library
-│   └── pic/               # Images and fonts
 ├── src/
-│   └── modules/           # Custom Python modules
-├── tests/
-│   └── flash_dashboard_only_v2.py  # Main dashboard script
+│   ├── run.py              # Entry point — the long-running dashboard loop
+│   │                       #   (also supports `--preview` for one-shot local rendering)
+│   └── modules/            # Custom Python modules (screen renderer, TfL client, etc.)
+│   └── assets/
+│       └── lib/            # Vendored WaveShare EPD driver
 ├── scripts/
-│   ├── deploy.sh          # Deployment script
-│   └── run_dashboard.sh   # Cron wrapper script (auto-generated)
-└── logs/
-    └── dashboard.log      # Application logs
+│   ├── start.sh            # Setup + installs/starts the systemd service
+│   ├── home-monitor.service  # systemd unit definition
+│   └── dev_preview.py       # Local live-preview dev loop
 ```
 
 ## Troubleshooting
@@ -126,26 +110,14 @@ Logs are stored in `logs/dashboard.log` and automatically rotated daily (keeping
 - Check connections between Pi and display
 - Verify display model matches the code (7.5" V2)
 
-### Script Not Running
-- Check cron job: `crontab -l`
-- View logs: `./scripts/deploy.sh logs`
-- Test manually: `python3 tests/flash_dashboard_only_v2.py`
-
-### Permission Issues
-- Ensure scripts are executable: `chmod +x scripts/*.sh`
-- Check file ownership: `sudo chown -R pi:pi /path/to/01_Home-monitor`
+### Service Not Running
+- Check status: `systemctl status home-monitor`
+- View logs: `journalctl -u home-monitor -e`
+- Re-run setup: `./scripts/start.sh`
 
 ### Common Error Messages
 - **"SPI device not found"**: Enable SPI in raspi-config
-- **"Permission denied"**: Check file permissions and ownership
-- **"Module not found"**: Verify PYTHONPATH and dependency installation
-
-## Configuration
-
-The main script (`flash_dashboard_only_v2.py`) can be customized by modifying:
-- Display layout in the dashboard planning section
-- Weather data sources
-- Update intervals (modify cron schedule)
+- **"Permission denied"**: Check that the Pi user running the service (`dkjlim`) has access to `/dev/gpiomem` and `/dev/spidev*` (normally via the `gpio`/`spi` groups)
 
 ## Contributing
 

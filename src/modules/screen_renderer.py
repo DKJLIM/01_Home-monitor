@@ -50,10 +50,10 @@ class ScreenRenderer:
     # ------------------------------------------------------------------
 
     def init(self) -> None:
-        """Initialise the display (must be called before render)."""
+        """Initialise the display."""
         if not self.preview_mode:
             logging.info("Initialising display")
-            self.epd.init()
+            self.epd.init_part()
 
     def clear(self) -> None:
         """Clear the display to white."""
@@ -71,7 +71,7 @@ class ScreenRenderer:
     # Rendering
     # ------------------------------------------------------------------
 
-    def render(self, image: Image.Image, save_preview: str = None) -> None:
+    def render(self, image: Image.Image, save_preview: str = None, full: bool = False) -> None:
         """
         Send a PIL Image to the display.
 
@@ -79,13 +79,24 @@ class ScreenRenderer:
             image: PIL Image (mode 'L', size 800×480).
             save_preview: Optional filesystem path; if given, the image is
                           also saved as a PNG (useful for debugging).
+            full: When True, do a full-quality refresh (init + Clear +
+                  display) instead of the fast partial refresh. Partial
+                  refreshes accumulate visible ghosting over time, so this
+                  should be used periodically to clear it.
         """
         if save_preview:
             image.save(save_preview)
             logging.info("Preview saved to %s", save_preview)
 
         if not self.preview_mode:
-            self.epd.display(self.epd.getbuffer(image))
+            if full:
+                logging.info("Performing full refresh (clears ghosting)")
+                self.epd.init()
+                self.epd.Clear()
+                self.epd.display(self.epd.getbuffer(image))
+                self.epd.init_part()
+            else:
+                self.epd.display_Partial(self.epd.getbuffer(image), 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT)
             logging.info("Image rendered to display")
 
     # ------------------------------------------------------------------

@@ -7,7 +7,6 @@ set -e
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV_DIR="$REPO_DIR/.venv"
-MAIN_SCRIPT="$REPO_DIR/src/run.py"
 
 echo "==> Home Monitor"
 echo "    Repo : $REPO_DIR"
@@ -21,10 +20,22 @@ else
 fi
 
 # ── 2. System packages ────────────────────────────────────────────────────────
-echo "==> Installing system packages"
-sudo apt-get update -qq
-sudo apt-get install -y -qq python3 python3-venv python3-pip libopenjp2-7 libtiff6 || \
-sudo apt-get install -y -qq python3 python3-venv python3-pip libopenjp2-7 libtiff5
+PACKAGES=(python3 python3-venv python3-pip libopenjp2-7)
+MISSING=()
+for pkg in "${PACKAGES[@]}"; do
+    dpkg -s "$pkg" &>/dev/null || MISSING+=("$pkg")
+done
+# pick the right libtiff version
+dpkg -s libtiff6 &>/dev/null || dpkg -s libtiff5 &>/dev/null || MISSING+=(libtiff6)
+
+if [ ${#MISSING[@]} -gt 0 ]; then
+    echo "==> Installing system packages: ${MISSING[*]}"
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq "${MISSING[@]}" || \
+    sudo apt-get install -y -qq "${MISSING[@]/%6/5}"
+else
+    echo "==> System packages already installed, skipping"
+fi
 
 # ── 3. Python virtual environment ────────────────────────────────────────────
 if [ ! -d "$VENV_DIR" ]; then
@@ -37,27 +48,15 @@ echo "==> Installing Python dependencies"
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 "$VENV_DIR/bin/pip" install --quiet -e "$REPO_DIR"
 
-# ── 5. Install tmux if missing ────────────────────────────────────────────────
-if ! command -v tmux &>/dev/null; then
-    echo "==> Installing tmux"
-    sudo apt-get install -y -qq tmux
-fi
-
-# ── 6. Launch in tmux ─────────────────────────────────────────────────────────
-SESSION="monitor"
-
-# Kill existing session if running
-if tmux has-session -t "$SESSION" 2>/dev/null; then
-    echo "==> Stopping existing monitor session"
-    tmux kill-session -t "$SESSION"
-fi
-
-echo "==> Starting home monitor in tmux session '$SESSION'"
-export TFL_API_KEY="${TFL_API_KEY:-}"
-tmux new-session -d -s "$SESSION" "$VENV_DIR/bin/python $MAIN_SCRIPT"
+# ── 5. Install systemd service ────────────────────────────────────────────────
+echo "==> Installing systemd service"
+sudo cp "$REPO_DIR/scripts/home-monitor.service" /etc/systemd/system/home-monitor.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now home-monitor
 
 echo ""
-echo "    Monitor is running in the background."
-echo "    To watch it:   tmux attach -t $SESSION"
-echo "    To stop it:    tmux kill-session -t $SESSION"
-echo "    Detach:        Ctrl+B then D"
+echo "    Monitor is running as a systemd service."
+echo "    Status:   systemctl status home-monitor"
+echo "    Logs:     journalctl -u home-monitor -f"
+echo "    Restart:  sudo systemctl restart home-monitor"
+echo "    Stop:     sudo systemctl stop home-monitor"

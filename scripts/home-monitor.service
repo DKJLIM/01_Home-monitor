@@ -1,0 +1,20 @@
+[Unit]
+Description=Home Monitor e-ink dashboard
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=dkjlim
+WorkingDirectory=/home/dkjlim/home-monitor
+EnvironmentFile=-/home/dkjlim/home-monitor/.env
+ExecStart=/home/dkjlim/home-monitor/.venv/bin/python /home/dkjlim/home-monitor/src/run.py
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

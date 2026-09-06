@@ -4,10 +4,14 @@
 run.py
 ------
 Main entry point for the home monitor.
-Renders the dashboard to the e-ink display and refreshes every 60 seconds.
+Renders the dashboard to the e-ink display and refreshes every 60 seconds,
+using a fast partial refresh. Every 10 minutes (FULL_REFRESH_EVERY cycles) it
+instead does a full refresh, which clears the ghosting partial refreshes
+leave behind over time.
 
 Usage:
-    python src/run.py
+    python src/run.py            # run forever, driving the physical display
+    python src/run.py --preview  # render once, save dashboard_preview.png, exit
 
 Stop with Ctrl+C — the display will be put to sleep cleanly.
 """
@@ -31,8 +35,9 @@ logging.basicConfig(
 )
 
 REFRESH_INTERVAL = 60  # seconds between display updates
+FULL_REFRESH_EVERY = 10  # cycles (~10 min) — periodic full refresh clears e-ink ghosting
 
-# ── Layout constants (mirrors test_dashboard_render.py) ───────────────────────
+# ── Layout constants ───────────────────────────────────────────────────────────
 BLACK      = 0
 WHITE      = 255
 LIGHT_GREY = 200
@@ -52,7 +57,7 @@ COL_MINS = 730
 def draw_header(draw, font_clock, font_date):
     draw.rectangle([(0, 0), (DISPLAY_WIDTH, HEADER_H)], fill=BLACK)
     now      = time.localtime()
-    time_str = time.strftime("%H:%M", now)
+    time_str = time.strftime("%H:%M:%S", now)
     date_str = time.strftime("%A  %d %B %Y", now)
     draw.text((PADDING, 10), time_str, font=font_clock, fill=WHITE)
     date_w = draw.textlength(date_str, font=font_date)
@@ -106,7 +111,7 @@ def draw_footer(draw, font_label):
               font=font_label, fill=MID_GREY)
 
 
-def render_once(renderer, tfl, fonts):
+def render_once(renderer, tfl, fonts, save_preview=None, full=False):
     font_clock, font_date, font_section, font_row, font_label = fonts
 
     logging.info("Fetching TfL arrivals…")
@@ -120,11 +125,11 @@ def render_once(renderer, tfl, fonts):
     draw_trains(draw, arrivals, font_section, font_label, font_row, start_y=HEADER_H + 12)
     draw_footer(draw, font_label)
 
-    renderer.render(img)
+    renderer.render(img, save_preview=save_preview, full=full)
 
 
-def main():
-    renderer = ScreenRenderer(preview_mode=False)
+def main(preview_only=False):
+    renderer = ScreenRenderer(preview_mode=preview_only)
     tfl      = TflClient()
 
     # Load fonts once — reused every iteration
@@ -136,14 +141,22 @@ def main():
         renderer.get_font(16),   # labels / footer
     )
 
+    if preview_only:
+        preview_path = str(Path(__file__).parent.parent / "dashboard_preview.png")
+        render_once(renderer, tfl, fonts, save_preview=preview_path)
+        return
+
     logging.info("Initialising display")
     renderer.init()
     renderer.clear()
 
+    cycle = 0
     try:
         while True:
+            cycle += 1
             try:
-                render_once(renderer, tfl, fonts)
+                full_refresh = (cycle % FULL_REFRESH_EVERY == 0)
+                render_once(renderer, tfl, fonts, full=full_refresh)
             except Exception as exc:
                 # Log the error but keep the loop running
                 logging.error("Render error (will retry next cycle): %s", exc)
@@ -162,4 +175,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(preview_only="--preview" in sys.argv)
